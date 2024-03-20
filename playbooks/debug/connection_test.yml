@@ -1,0 +1,6 @@
+- name: Connection Test
+  hosts: all
+  gather_facts: yes
+  tasks:
+    - name: Test Connection
+      command: echo "Connection Test"
