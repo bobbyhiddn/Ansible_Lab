@@ -1,0 +1,28 @@
+---
+- name: Create a VM on Proxmox from an ISO or Template
+  hosts: localhost
+  gather_facts: no
+  vars_prompt:
+    - name: vm_name
+      prompt: "Enter the VM name"
+      default: "test_vm"  # Default value specified here
+      private: no
+
+  tasks:
+    - name: Create VM from ISO or Template
+      community.general.proxmox_kvm:
+        api_user: "{{ api_user | default('root@pam') }}"
+        api_password: "{{ api_password }}"
+        api_host: "{{ api_host }}"
+        validate_certs: no
+        node: "{{ node }}"
+        vmid: "{{ vmid | default(100) }}"
+        name: "{{ vm_name }}"
+        memory: "{{ vm_memory | default(2048) }}"
+        cores: "{{ vm_cores | default(2) }}"
+        net: '{"net0":"virtio,bridge={{ vm_net_bridge | default('vmbr0') }}"}'
+        virtio: '{"virtio0":"local:{{ vm_disk_size | default('10G') }},format=qcow2"}'
+        iso: "{{ vm_iso | default('local:iso/ubuntu-20.04.1-live-server-amd64.iso') }}"
+        clone: "{{ vm_clone | default(omit) }}"
+        full_clone: yes
+      delegate_to: localhost
