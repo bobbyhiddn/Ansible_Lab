@@ -58,15 +58,15 @@ destroy_vm() {
 # Cleaning up related task logs for VM $VMID
 cleanup_logs() {
     echo "Cleaning up related task logs for VM $VMID..."
+    # Backup original log file before modifications
     cp "$LOG_FILE" "$BACKUP_FILE"
 
-    # Use grep and sed to remove lines with the exact VMID, considering the log structure
-    grep -P "UPID:proxmox:[0-9A-F]+:[0-9A-F]+:[0-9A-F]+:qm[A-Za-z]+:$VMID:" "$BACKUP_FILE" > "${LOG_FILE}.tmp"
-    mv "${LOG_FILE}.tmp" "$LOG_FILE"
-    
+    # Use sed to remove lines that exactly match the VMID in the expected log format
+    # The pattern ensures that the VMID is exactly matched, following 'qm*' operations and colon-separated fields
+    sed -i "/:qm[^:]*:$VMID:/d" "$LOG_FILE"
+
     echo "Log cleanup for VM $VMID completed."
 }
-
 
 # Main script execution starts here
 ensure_root
