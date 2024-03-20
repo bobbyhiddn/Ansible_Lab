@@ -1,0 +1,17 @@
+- name: Handle ansible vault secrets
+  block:
+    - name: Include variables from ansible vault
+      ansible.builtin.include_vars:
+        file: "{{ ansible_vault_file }}"
+        name: ansible_vault_vars
+
+    - name: Register ansible vault secrets as a variable when using local secrets
+      ansible.builtin.set_fact:
+        passed_vault_vars: "{{ {'secret': ansible_vault_vars} }}"
+      when: local_secrets | bool and local_secrets is defined
+  when: ansible_vault_file is defined
+
+- name: Register dummy host with secrets
+  ansible.builtin.add_host:
+    name: "VAULT_HOST"
+    vault_secrets: "{{ passed_vault_vars }}"

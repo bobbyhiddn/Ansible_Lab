@@ -1,0 +1,66 @@
+
+- name: Handle secrets when vault file is not provided
+  block:
+    - name: Prompt for vault token
+      ansible.builtin.pause:
+        prompt: Enter your hashicorp vault token
+        echo: false
+      register: hashicorp_token_input
+
+    - name: Set vault token variable
+      ansible.builtin.set_fact:
+        input_vault_token: "{{ hashicorp_token_input.user_input }}"
+
+  when: ansible_vault_file is not defined and pipeline is not defined
+
+- name: Handle ansible vault secrets
+  block:
+    - name: Include variables from ansible vault
+      ansible.builtin.include_vars:
+        file: "{{ ansible_vault_file }}"
+        name: ansible_vault_vars
+
+    - name: Register ansible vault secrets as a variable when using local secrets
+      ansible.builtin.set_fact:
+        passed_vault_vars: "{{ {'secret': ansible_vault_vars} }}"
+      when: local_secrets | bool and local_secrets is defined
+  when: ansible_vault_file is defined
+
+- name: Read and register HashiCorp Vault secrets
+  block:
+    - name: Read all kv2 secrets from hashicorp vault credentials folder
+      community.hashi_vault.vault_kv2_get:
+        engine_mount_point: "{{ hashicorp_mount_point }}"
+        path: "{{ hashicorp_secret_path }}"
+        token: "{{ ansible_vault_vars.hashicorp_vault_token if ansible_vault_file is defined else input_vault_token }}"
+      register: vault_vars_temp
+      environment:
+        VAULT_ADDR: "{{ hashicorp_vault_url }}"
+        VAULT_SKIP_VERIFY: "true"
+
+    - name: Set variable for secrets when not running from pipeline
+      ansible.builtin.set_fact:
+        passed_vault_vars: "{{ vault_vars_temp }}"
+  when: pipeline is not defined and local_secrets is not defined
+
+- name: Handle pipeline secrets retrieval
+  block:
+    - name: Read secrets using local token file if run from pipeline
+      community.hashi_vault.vault_kv2_get:
+        engine_mount_point: "{{ hashicorp_mount_point }}"
+        path: "{{ hashicorp_secret_path }}"
+        auth_method: token
+      register: vault_vars_temp
+      environment:
+        VAULT_ADDR: "{{ hashicorp_vault_url }}"
+        VAULT_SKIP_VERIFY: "true"
+
+    - name: Set variable for secrets when running from pipeline
+      ansible.builtin.set_fact:
+        passed_vault_vars: "{{ vault_vars_temp }}"
+  when: pipeline | bool and pipeline is defined
+
+- name: Register dummy host with secrets
+  ansible.builtin.add_host:
+    name: "VAULT_HOST"
+    vault_secrets: "{{ passed_vault_vars }}"
