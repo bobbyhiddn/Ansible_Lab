@@ -20,5 +20,8 @@
         - sudo
         - git
 
+- name: Run Baseline Roles
+  hosts: proxmox
+  gather_facts: yes
   roles:
     - role: bobbyhiddn_sudo
