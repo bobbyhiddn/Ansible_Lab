@@ -1,0 +1,44 @@
+---
+- name: Setup Docker and Terraform on Rocky Linux
+  hosts: localhost
+  become: yes
+
+  tasks:
+    - name: Install required packages
+      dnf:
+        name:
+          - dnf-utils
+          - device-mapper-persistent-data
+          - lvm2
+        state: present
+
+    - name: Add Docker repository
+      get_url:
+        url: https://download.docker.com/linux/centos/docker-ce.repo
+        dest: /etc/yum.repos.d/docker-ce.repo
+
+    - name: Install Docker Engine
+      dnf:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+        state: latest
+
+    - name: Start and enable Docker service
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Pull the official Terraform Docker image
+      docker_image:
+        name: hashicorp/terraform:latest
+        source: pull
+
+    - name: Test Terraform Docker container (Optional)
+      docker_container:
+        name: terraform_test
+        image: hashicorp/terraform:latest
+        command: version
+        auto_remove: yes
