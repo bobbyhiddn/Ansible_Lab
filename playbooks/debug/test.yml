@@ -1,7 +1,0 @@
----
-- hosts: all
-  tasks:
-    - name: Test Ansible
-      command: echo "Ansible is working"
-...
-
