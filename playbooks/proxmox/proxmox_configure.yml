@@ -23,5 +23,7 @@
 - name: Run Baseline Roles
   hosts: proxmox
   gather_facts: yes
+  vars:
+    vault_vars: "{{ hostvars['VAULT_HOST'].vault_secrets.secret }}"
   roles:
     - role: bobbyhiddn_sudo
