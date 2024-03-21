@@ -1,0 +1,31 @@
+- name: Create new user and set password
+  become: yes
+  user:
+    name: bobbyhiddn
+    password: "{{ vault_vars.bobbyhiddn_password | password_hash('sha512') }}"
+    update_password: on_create
+
+- name: Update password for bobbyhiddn
+  become: yes
+  user:
+    name: bobbyhiddn
+    password: "{{ vault_vars.bobbyhiddn_password | password_hash('sha512') }}"
+    update_password: always
+
+- name: Allow new user to have sudo access
+  become: yes
+  lineinfile:
+    dest: /etc/sudoers
+    state: present
+    regexp: '^bobbyhiddn'
+    line: 'bobbyhiddn ALL=(ALL:ALL) ALL'
+    validate: 'visudo -cf %s'
+
+- name: Ensure home directory ownership is correct
+  become: yes
+  file:
+    path: /home/bobbyhiddn
+    state: directory
+    owner: bobbyhiddn
+    group: bobbyhiddn
+    recurse: yes
