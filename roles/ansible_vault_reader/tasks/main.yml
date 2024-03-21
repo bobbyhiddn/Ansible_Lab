@@ -8,7 +8,6 @@
     - name: Register ansible vault secrets as a variable when using local secrets
       ansible.builtin.set_fact:
         passed_vault_vars: "{{ {'secret': ansible_vault_vars} }}"
-      when: local_secrets | bool and local_secrets is defined
   when: ansible_vault_file is defined
 
 - name: Register dummy host with secrets

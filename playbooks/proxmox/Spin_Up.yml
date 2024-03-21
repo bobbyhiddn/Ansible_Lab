@@ -21,7 +21,7 @@
     - name: Clone VM from Template
       community.general.proxmox_kvm:
         api_user: "{{ api_user | default('root@pam') }}"
-        api_password: "{{ proxmox_password }}"
+        api_password: "{{ vault_vars.proxmox_password }}"
         api_host: "{{ api_host }}"
         validate_certs: no
         node: "{{ node }}"
