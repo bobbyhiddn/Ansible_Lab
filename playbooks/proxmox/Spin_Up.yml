@@ -1,28 +1,52 @@
 ---
-- name: Create a VM on Proxmox from an ISO or Template
+
+- name: Include variables from ansible vault
   hosts: localhost
   gather_facts: no
+  roles:
+    - role: ansible_vault_reader
+
+- name: Create a VM on Proxmox from a Template
+  hosts: localhost
+  gather_facts: no
+  vars:
+    vault_vars: "{{ hostvars['VAULT_HOST'].vault_secrets.secret }}"
   vars_prompt:
     - name: vm_name
       prompt: "Enter the VM name"
-      default: "test_vm"  # Default value specified here
+      default: "test_vm"  # Default VM name
       private: no
 
   tasks:
-    - name: Create VM from ISO or Template
+    - name: Clone VM from Template
+      community.general.proxmox_kvm:
+        api_user: "{{ api_user | default('root@pam') }}"
+        api_password: "{{ proxmox_password }}"
+        api_host: "{{ api_host }}"
+        validate_certs: no
+        node: "{{ node }}"
+        vmid: "{{ vmid | default(omit) }}"
+        name: "{{ vm_name }}"
+        clone: "{{ vm_template | default('ubuntu_template') }}" # Default to 'ubuntu_template'
+        target: "{{ node }}"
+        full_clone: yes
+        storage: "{{ vm_storage | default('local-lvm') }}" # Adjust based on your storage setup
+        format: "{{ vm_format | default('qcow2') }}"
+      delegate_to: localhost
+
+    - name: Conditionally create VM from ISO if specified
       community.general.proxmox_kvm:
         api_user: "{{ api_user | default('root@pam') }}"
         api_password: "{{ api_password }}"
         api_host: "{{ api_host }}"
         validate_certs: no
         node: "{{ node }}"
-        vmid: "{{ vmid | default(100) }}"
+        vmid: "{{ vmid | default(omit) }}"
         name: "{{ vm_name }}"
         memory: "{{ vm_memory | default(2048) }}"
         cores: "{{ vm_cores | default(2) }}"
         net: '{"net0":"virtio,bridge={{ vm_net_bridge | default('vmbr0') }}"}'
         virtio: '{"virtio0":"local:{{ vm_disk_size | default('10G') }},format=qcow2"}'
-        iso: "{{ vm_iso | default('local:iso/ubuntu-20.04.1-live-server-amd64.iso') }}"
-        clone: "{{ vm_clone | default(omit) }}"
-        full_clone: yes
+        iso: "{{ vm_iso }}"
+      when: vm_iso is defined and vm_iso | length > 0
       delegate_to: localhost
