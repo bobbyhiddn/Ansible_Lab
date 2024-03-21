@@ -20,13 +20,6 @@
         password: "{{ vault_vars.bobbyhiddn_password | password_hash('sha512') }}"
         update_password: on_create
 
-    - name: Update password for bobbyhiddn
-      become: yes
-      user:
-        name: bobbyhiddn
-        password: "{{ vault_vars.bobbyhiddn_password | password_hash('sha512') }}"
-        update_password: always
-
     - name: Allow new user to have sudo access
       become: yes
       lineinfile:
@@ -44,3 +37,10 @@
         owner: bobbyhiddn
         group: bobbyhiddn
         recurse: yes
+
+    - name: Update password for bobbyhiddn
+      become: yes
+      user:
+        name: bobbyhiddn
+        password: "{{ vault_vars.bobbyhiddn_password | password_hash('sha512') }}"
+        update_password: always
