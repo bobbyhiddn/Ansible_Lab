@@ -114,3 +114,20 @@
 
       when: vm_name is defined and vm_name | length > 0
 
+    - name: Conditionally create VM from ISO if specified
+      community.general.proxmox_kvm:
+        api_user: "{{ api_user | default('root@pam') }}"
+        api_password: "{{ vault_vars.proxmox_password }}"
+        api_host: "{{ api_host }}"
+        validate_certs: no
+        node: "{{ node }}"
+        vmid: "{{ vmid | default(omit) }}"
+        name: "{{ vm_name }}"
+        memory: "{{ vm_memory | default(2048) }}"
+        cores: "{{ vm_cores | default(2) }}"
+        net:
+          net0: "virtio,bridge={{ vm_net_bridge | default('vmbr0') }}"
+        virtio:
+          virtio0: "local={{ vm_disk_size | default('10G') }},format=qcow2"
+        iso: "{{ vm_iso }}"
+      when: vm_iso is defined and vm_iso | length > 0
