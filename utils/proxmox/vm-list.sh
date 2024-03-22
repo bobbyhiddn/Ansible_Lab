@@ -9,7 +9,7 @@ PROXMOX_IP="192.168.0.128"
 USERNAME="root@pam"
 
 # Authenticate and obtain a ticket
-RESPONSE=$(curl -k -s -d "username=${USERNAME}" --data-urlencode "password@${PASSWORD_FILE}" "https://${PROXMOX_IP}:8006/api2/json/access/ticket")
+RESPONSE=$(curl -k -s -d "username=${USERNAME}" --data-urlencode "password@${PASSWORD}" "https://${PROXMOX_IP}:8006/api2/json/access/ticket")
 
 # Extract the ticket and CSRFPreventionToken using jq
 TICKET=$(echo $RESPONSE | jq -r '.data.ticket')
