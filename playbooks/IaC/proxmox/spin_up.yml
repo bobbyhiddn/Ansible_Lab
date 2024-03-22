@@ -1,3 +1,11 @@
+---
+
+- name: Include variables from ansible vault
+  hosts: localhost
+  gather_facts: no
+  roles:
+    - role: ansible_vault_reader
+
 - name: Include variables from ansible vault
   hosts: localhost
   gather_facts: no
@@ -6,9 +14,6 @@
     base_name: "Test-"
     start_index: 1
     max_attempts: 100
-    proxmox_ip: "192.168.0.128"  # Ensure this is defined in your vars
-    api_user: "root@pam"  # Ensure this is defined in your vars
-    api_password: "{{ vault_vars.proxmox_password }}"  # Adjust as needed
 
   tasks:
     - name: Obtain Authentication Token
