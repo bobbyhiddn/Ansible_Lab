@@ -52,6 +52,6 @@ echo "Raw VM agent network interface information:"
 echo $VM_AGENT_INFO
 
 # Extract the IP address from the VM agent information
-IP_ADDRESS=$(echo $VM_AGENT_INFO | jq -r '.data.result[] | select(.name != "lo") | .ip-addresses[] | select(.ip-address-type == "ipv4") | .ip-address')
+IP_ADDRESS=$(echo $VM_AGENT_INFO | jq -r '.data.result[] | select(.name != "lo") | .["ip-addresses"][] | select(.["ip-address-type"] == "ipv4") | .["ip-address"]')
 
 echo "VM IP Address: $IP_ADDRESS"
