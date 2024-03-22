@@ -29,5 +29,5 @@ echo "Listing QEMU VMs on node $NODE..."
 curl -k -s -b "PVEAuthCookie=$TICKET" "https://${PROXMOX_IP}:8006/api2/json/nodes/${NODE}/qemu"
 
 # Example: List LXC containers on the same node (Uncomment if needed)
-#echo "Listing LXC containers on node $NODE..."
-#curl -k -s -b "PVEAuthCookie=$TICKET" "https://${PROXMOX_IP}:8006/api2/json/nodes/${NODE}/lxc"
+echo "Listing LXC containers on node $NODE..."
+curl -k -s -b "PVEAuthCookie=$TICKET" "https://${PROXMOX_IP}:8006/api2/json/nodes/${NODE}/lxc"

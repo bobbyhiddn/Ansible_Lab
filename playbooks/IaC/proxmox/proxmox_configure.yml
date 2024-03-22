@@ -19,6 +19,17 @@
         - python3-pip
         - sudo
         - git
+  
+    - name: Install Python packages
+      pip:
+        name: "{{ item }}"
+        state: present
+      with_items:
+        - ansible
+        - pyvmomi
+        - proxmoxer
+        - requests
+        - jmespath
 
 - name: Run Baseline Roles
   hosts: proxmox
