@@ -62,24 +62,30 @@
           set_fact:
             vms: "{{ vm_list_response.json | json_query('data[*].{name: name, vmid: vmid, status: status}') }}"
 
+        - name: Initialize an empty VM name
+          set_fact:
+            vm_name: ""
+
         - name: Find an available VM name
           set_fact:
-            available_name: "{{ base_name + item | string }}"
+            vm_name: "{{ base_name + item | string }}"
           loop: "{{ range(start_index, start_index + max_attempts) | list }}"
-          when: vms | map(attribute='name') | list | select('search', '^' + base_name + item | string + '$') | list | length == 0
-          register: available_name_result
-          until: available_name_result.ansible_facts is defined
-          retries: "{{ max_attempts }}"
+          when: 
+            - vm_name == ""
+            - vms | map(attribute='name') | list | select('search', '^' + base_name + item | string + '$') | list | length == 0
+          loop_control:
+            extended: yes
+          register: loop_output
 
-        - name: Set the final VM name
-          set_fact:
-            vm_name: "{{ available_name }}"
-          when: available_name is defined
+        - name: Debug - Show the chosen VM name
+          debug:
+            msg: "Chosen VM name is {{ vm_name }}"
+          when: vm_name != ""
 
         - name: Fail if no available name found
           fail:
             msg: "No available name found after {{ max_attempts }} attempts"
-          when: vm_name is not defined or vm_name | length == 0
+          when: vm_name == ""
 
       when: vm_name is not defined or vm_name | length == 0
 
