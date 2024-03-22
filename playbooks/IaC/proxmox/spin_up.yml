@@ -19,7 +19,6 @@
         - name: Prompt for VM name or press Enter to auto-generate
           pause:
             prompt: "Enter the name of the VM to create or press Enter to auto-generate: "
-            # Set a timeout for the prompt. For demonstration, a 15-second timeout.
           register: manual_vm_name_input
 
         - name: Set VM name from input if provided
@@ -49,14 +48,19 @@
 
         - name: Set available VM name
           set_fact:
-            vm_name: "{{ base_name }}{{ '%02d' | format(current_attempt) }}"
-          when: vm_check.failed
+            vm_name: "{{ base_name }}{{ '%02d' | format(loop.index0 + start_index) }}"
+          when: vm_check is defined and vm_check.results | selectattr('failed', 'equalto', true) | list | length > 0
           loop: "{{ vm_check.results }}"
           loop_control:
-            loop_var: vm_check
+            loop_var: result_item
           changed_when: false
-          failed_when: current_attempt == max_attempts - 1 and vm_name == ""
-      when: vm_name is not defined
+          failed_when: loop.last and vm_name == ""
+      when: vm_name is not defined or vm_name | length == 0
+
+      rescue:
+        - name: Fail if no available name is found
+          fail:
+            msg: "No available VM name found after {{ max_attempts }} attempts."
 
       rescue:
         - name: Fail if no available name is found
