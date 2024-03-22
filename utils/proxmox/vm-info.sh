@@ -42,10 +42,12 @@ VM_INFO=$(curl -k -s -b "PVEAuthCookie=$TICKET" "https://${PROXMOX_IP}:8006/api2
 echo "VM Status: $(echo $VM_INFO | jq -r '.data.status')"
 echo "VM CPU Usage: $(echo $VM_INFO | jq -r '.data.cpu')"
 echo "VM Memory Usage: $(echo $VM_INFO | jq -r '.data.mem')"
-# Add more fields as needed
 
-# Uncomment the following lines if you also need to fetch information for an LXC container by ID
-# echo "Getting info for LXC container ID $VM_ID on node $NODE..."
-# CONTAINER_INFO=$(curl -k -s -b "PVEAuthCookie=$TICKET" "https://${PROXMOX_IP}:8006/api2/json/nodes/${NODE}/lxc/${VM_ID}/status/current")
-# echo "Container Status: $(echo $CONTAINER_INFO | jq -r '.data.status')"
+# Fetch the VM configuration to get the IP address
+VM_CONFIG=$(curl -k -s -b "PVEAuthCookie=$TICKET" "https://${PROXMOX_IP}:8006/api2/json/nodes/${NODE}/qemu/${VM_ID}/config")
+
+# Extract the IP address from the VM configuration
+IP_ADDRESS=$(echo $VM_CONFIG | jq -r '.data.net0' | awk -F'=' '{print $2}' | awk -F',' '{print $1}')
+
+echo "VM IP Address: $IP_ADDRESS"
 # Add more fields as needed
