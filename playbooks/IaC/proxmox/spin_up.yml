@@ -1,12 +1,4 @@
----
-
 - name: Include variables from ansible vault
-  hosts: localhost
-  gather_facts: no
-  roles:
-    - role: ansible_vault_reader
-
-- name: Create a VM on Proxmox from a Template
   hosts: localhost
   gather_facts: no
   vars:
@@ -14,8 +6,27 @@
     base_name: "Test-"
     start_index: 1
     max_attempts: 100
+    proxmox_ip: "192.168.0.128"  # Ensure this is defined in your vars
+    api_user: "root@pam"  # Ensure this is defined in your vars
+    api_password: "{{ vault_vars.proxmox_password }}"  # Adjust as needed
 
   tasks:
+    - name: Obtain Authentication Token
+      uri:
+        url: "https://{{ proxmox_ip }}/api2/json/access/ticket"
+        method: POST
+        body_format: form-urlencoded
+        body:
+          username: "{{ api_user }}"
+          password: "{{ api_password }}"
+        validate_certs: no
+        force_basic_auth: yes
+      register: login_response
+
+    - name: Set Authentication Token and CSRF Token as Facts
+      set_fact:
+        auth_cookie: "{{ login_response.json.data.ticket }}"
+        csrf_token: "{{ login_response.json.data.CSRFPreventionToken }}"
 
     - name: VM Name Block
       block:
@@ -31,35 +42,20 @@
 
       when: vm_name is not defined or vm_name | length == 0
 
-    - name: Find available VM name
-      block:
+    - name: List VMs on Proxmox node using Token
+      uri:
+        url: "https://{{ proxmox_ip }}/api2/json/nodes/{{ node | default('proxmox') }}/qemu"
+        method: GET
+        return_content: yes
+        headers:
+          Cookie: "PVEAuthCookie={{ auth_cookie }}"
+        validate_certs: no
+      register: vm_list_response
 
-        - name: List VMs on Proxmox node
-          uri:
-            url: "https://{{ proxmox_ip }}/api2/json/nodes/{{ node | default('proxmox') }}/qemu"
-            method: GET
-            user: "{{ api_user | default('root@pam') }}"
-            password: "{{ api_password | default(vault_vars.proxmox_password) }}"
-            force_basic_auth: yes
-            validate_certs: no
-          register: vm_list_response
-          ignore_errors: yes
-
-        - name: Check if VM name exists
-          set_fact:
-            vm_name_exists: "{{ vm_list_response.json.data | json_query('[?name==`' + vm_name + '`]') | length > 0 }}"
-          when: vm_list_response.status == 200
-
-        - name: Debug VM name exists fact
-          debug:
-            msg: "VM name {{ vm_name }} exists: {{ vm_name_exists }}"
-
-      when: vm_name is not defined or vm_name | length == 0
-
-      rescue:
-        - name: Fail if no available name is found
-          fail:
-            msg: "No available VM name found after {{ max_attempts }} attempts."
+    - name: Check if VM name exists
+      set_fact:
+        vm_name_exists: "{{ vm_list_response.json.data | json_query('[?name==`' + vm_name + '`]') | length > 0 }}"
+      when: vm_list_response.status == 200
 
     - name: Use the available VM name for further operations
       debug:
