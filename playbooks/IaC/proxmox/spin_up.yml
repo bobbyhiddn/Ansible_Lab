@@ -5,8 +5,7 @@
   gather_facts: no
   roles:
     - role: ansible_vault_reader
-
----
+    
 - name: Include variables from ansible vault
   hosts: localhost
   gather_facts: no
