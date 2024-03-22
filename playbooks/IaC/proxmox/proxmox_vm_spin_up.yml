@@ -132,15 +132,15 @@
         iso: "{{ vm_iso }}"
       when: vm_iso is defined and vm_iso | length > 0
 
-    - name: Retrieve VM info from Proxmox API
+    - name: Start the VM
       uri:
-        url: "https://{{ proxmox_ip }}:8006/api2/json/nodes/{{ node | default('proxmox') }}/qemu/{{ vm_name }}"
+        url: "https://{{ proxmox_ip }}:8006/api2/json/nodes/{{ node | default('proxmox') }}/qemu/{{ vmid }}/status/start"
+        method: POST
         headers:
           Cookie: "PVEAuthCookie={{ proxmox_ticket }}"
           CSRFPreventionToken: "{{ csrf_token }}"
         validate_certs: no
-        return_content: yes
-        register: vm_info_response
+      register: vm_start_response
 
     - name: Print VM IP address
       debug:
