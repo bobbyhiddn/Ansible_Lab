@@ -68,7 +68,7 @@
           loop: "{{ range(start_index, start_index + max_attempts) | list }}"
           when: vms | map(attribute='name') | list | select('search', '^' + base_name + item | string + '$') | list | length == 0
           register: available_name
-          until: available_name.ansible_facts is defined and available_name.changed
+          until: available_name.ansible_facts.vm_name is defined or available_name.ansible_facts.vm_name | length > 0
           retries: "{{ max_attempts }}"
 
         - name: Set the final VM name
