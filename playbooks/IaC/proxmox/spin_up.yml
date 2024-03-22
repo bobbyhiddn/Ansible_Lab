@@ -33,37 +33,28 @@
 
     - name: Find available VM name
       block:
-        - name: Check if VM name exists
-          community.general.proxmox_kvm:
-            api_user: "{{ api_user | default('root@pam') }}"
-            api_password: "{{ api_password | default(vault_vars.proxmox_password) }}"
-            api_host: "{{ api_host | default('proxmox') }}"
+
+        - name: List VMs on Proxmox node
+          uri:
+            url: "https://{{ proxmox_ip }}/api2/json/nodes/{{ node | default('proxmox') }}/qemu"
+            method: GET
+            user: "{{ api_user | default('root@pam') }}"
+            password: "{{ api_password | default(vault_vars.proxmox_password) }}"
+            force_basic_auth: yes
             validate_certs: no
-            node: "{{ node | default('proxmox') }}"
-            name: "{{ base_name }}{{ '%02d' | format(item) }}"
-          register: vm_check
-          failed_when: "'VM with name' in vm_check.msg and vm_check.failed"
-          ignore_errors: true
-          loop: "{{ range(start_index, start_index + max_attempts) | list }}"
-          loop_control:
-            extended: yes
-            index_var: current_attempt
+          register: vm_list_response
+          ignore_errors: yes
 
-        - name: Set available VM name
+        - name: Check if VM name exists
           set_fact:
-            vm_name: "{{ base_name }}{{ '%02d' | format(loop.index0 + start_index) }}"
-          when: vm_check is defined and vm_check.results | selectattr('failed', 'equalto', true) | list | length > 0
-          loop: "{{ vm_check.results }}"
-          loop_control:
-            loop_var: result_item
-          changed_when: false
-          failed_when: loop.last and vm_name == ""
-      when: vm_name is not defined or vm_name | length == 0
+            vm_name_exists: "{{ vm_list_response.json.data | json_query('[?name==`' + vm_name + '`]') | length > 0 }}"
+          when: vm_list_response.status == 200
 
-      rescue:
-        - name: Fail if no available name is found
-          fail:
-            msg: "No available VM name found after {{ max_attempts }} attempts."
+        - name: Debug VM name exists fact
+          debug:
+            msg: "VM name {{ vm_name }} exists: {{ vm_name_exists }}"
+
+      when: vm_name is not defined or vm_name | length == 0
 
       rescue:
         - name: Fail if no available name is found
