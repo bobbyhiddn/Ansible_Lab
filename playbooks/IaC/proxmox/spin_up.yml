@@ -46,9 +46,8 @@
 
       when: vm_name is not defined or vm_name | length == 0
 
-    - name: Check if VM name already exists
+    - name: Generate VM Name
       block:
-
         - name: List VMs on Proxmox node using Token
           uri:
             url: "https://{{ proxmox_ip }}:8006/api2/json/nodes/{{ node | default('proxmox') }}/qemu"
@@ -63,13 +62,28 @@
           set_fact:
             vms: "{{ vm_list_response.json | json_query('data[*].{name: name, vmid: vmid, status: status}') }}"
 
-        - name: Check if VM name already exists
+        - name: Initialize start index
           set_fact:
-            vm_name_exists: "{{ vms | selectattr('name', 'equalto', vm_name) | list | length > 0 }}"
+            start_index: 1
 
-        - name: Debug - VM name availability
-          debug:
-            msg: "VM name '{{ vm_name }}' exists: {{ vm_name_exists }}"
+        - name: Find an available VM name
+          set_fact:
+            vm_name: "{{ base_name + start_index | string }}"
+          loop: "{{ range(1, max_attempts + 1) | list }}"
+          loop_control:
+            loop_var: start_index
+          when: vms | map(attribute='name') | list | select('search', '^' + base_name + start_index | string + '$') | list | length == 0
+          register: available_name
+
+        - name: Set the final VM name
+          set_fact:
+            vm_name: "{{ available_name.results | selectattr('ansible_facts', 'defined') | first | default({}) | attr('ansible_facts', {}) | attr('vm_name', '') }}"
+
+        - name: Fail if no available name found
+          fail:
+            msg: "No available name found after {{ max_attempts }} attempts"
+          when: vm_name == ''
+
       when: vm_name is not defined or vm_name | length == 0
 
     - name: VM Creation
