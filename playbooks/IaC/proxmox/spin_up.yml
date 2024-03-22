@@ -31,35 +31,35 @@
 
       when: vm_name is not defined or vm_name | length == 0
 
-    - name: Find available VM name
-      block:
+    # - name: Find available VM name
+    #   block:
 
-        - name: List VMs on Proxmox node
-          uri:
-            url: 'https://"{{ proxmox_ip }}"/api2/json/nodes/"{{ node | default('proxmox') }}"/qemu'
-            method: GET
-            user: "{{ api_user | default('root@pam') }}"
-            password: "{{ api_password | default(vault_vars.proxmox_password) }}"
-            force_basic_auth: yes
-            validate_certs: no
-          register: vm_list_response
-          ignore_errors: yes
+    #     - name: List VMs on Proxmox node
+    #       uri:
+    #         url: "https://{{ proxmox_ip }}/api2/json/nodes/{{ node | default('proxmox') }}/qemu"
+    #         method: GET
+    #         user: "{{ api_user | default('root@pam') }}"
+    #         password: "{{ api_password | default(vault_vars.proxmox_password) }}"
+    #         force_basic_auth: yes
+    #         validate_certs: no
+    #       register: vm_list_response
+    #       ignore_errors: yes
 
-        - name: Check if VM name exists
-          set_fact:
-            vm_name_exists: "{{ vm_list_response.json.data | json_query('[?name==`' + vm_name + '`]') | length > 0 }}"
-          when: vm_list_response.status == 200
+    #     - name: Check if VM name exists
+    #       set_fact:
+    #         vm_name_exists: "{{ vm_list_response.json.data | json_query('[?name==`' + vm_name + '`]') | length > 0 }}"
+    #       when: vm_list_response.status == 200
 
-        - name: Debug VM name exists fact
-          debug:
-            msg: "VM name {{ vm_name }} exists: {{ vm_name_exists }}"
+    #     - name: Debug VM name exists fact
+    #       debug:
+    #         msg: "VM name {{ vm_name }} exists: {{ vm_name_exists }}"
 
-      when: vm_name is not defined or vm_name | length == 0
+    #   when: vm_name is not defined or vm_name | length == 0
 
-      rescue:
-        - name: Fail if no available name is found
-          fail:
-            msg: "No available VM name found after {{ max_attempts }} attempts."
+    #   rescue:
+    #     - name: Fail if no available name is found
+    #       fail:
+    #         msg: "No available VM name found after {{ max_attempts }} attempts."
 
     - name: Use the available VM name for further operations
       debug:
