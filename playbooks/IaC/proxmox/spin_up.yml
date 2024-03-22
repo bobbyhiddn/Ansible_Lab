@@ -24,11 +24,11 @@
         api_password: "{{ vault_vars.proxmox_password }}"
         api_host: "{{ proxmox_ip }}"
         validate_certs: no
-        node: "{{ node }}"
+        node: "{{ node | default('proxmox')}}"
         vmid: "{{ vmid | default(omit) }}"
         name: "{{ vm_name }}"
         clone: "{{ vm_template | default('ubuntu_template') }}" # Default to 'ubuntu_template'
-        target: "{{ node }}"
+        target: "{{ node | default('proxmox')}}"  
         full_clone: yes
         storage: "{{ vm_storage | default('local-lvm') }}" # Adjust based on your storage setup
         format: "{{ vm_format | default('qcow2') }}"
