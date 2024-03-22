@@ -65,7 +65,7 @@
         - name: Debug - VM name availability
           debug:
             msg: "VM name '{{ vm_name }}' exists: {{ vm_name_exists }}"
-      when: vm_name_exists is defined
+      when: vm_name is not defined or vm_name | length == 0
 
     - name: VM Creation
       block:
