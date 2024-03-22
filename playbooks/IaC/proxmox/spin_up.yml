@@ -16,15 +16,57 @@
 
     - name: VM Name Block
       block:
-        - name: Prompt for VM name
+        - name: Prompt for VM name or press Enter to auto-generate
           pause:
-            prompt: "Enter the name of the VM to create: "
-          register: vm_name
+            prompt: "Enter the name of the VM to create or press Enter to auto-generate: "
+            # Set a timeout for the prompt. For demonstration, a 15-second timeout.
+            timeout: 15
+          register: manual_vm_name_input
 
-        - name: Set VM name as fact
+        - name: Set VM name from input if provided
           set_fact:
-            vm_name: "{{ vm_name.user_input }}"
+            vm_name: "{{ manual_vm_name_input.user_input | default('') }}"
+          when: manual_vm_name_input.user_input is defined and manual_vm_name_input.user_input | length > 0
+
+      when: vm_name is not defined or vm_name | length == 0
+
+    - name: Find available VM name
+      block:
+        - name: Check if VM name exists
+          community.general.proxmox_kvm:
+            api_user: "{{ api_user }}"
+            api_password: "{{ api_password }}"
+            api_host: "{{ api_host }}"
+            validate_certs: no
+            node: "{{ node }}"
+            name: "{{ base_name }}{{ '%02d' | format(item) }}"
+          register: vm_check
+          failed_when: "'VM with name' in vm_check.msg and vm_check.failed"
+          ignore_errors: true
+          loop: "{{ range(start_index, start_index + max_attempts) | list }}"
+          loop_control:
+            extended: yes
+            index_var: current_attempt
+
+        - name: Set available VM name
+          set_fact:
+            vm_name: "{{ base_name }}{{ '%02d' | format(current_attempt) }}"
+          when: vm_check.failed
+          loop: "{{ vm_check.results }}"
+          loop_control:
+            loop_var: vm_check
+          changed_when: false
+          failed_when: current_attempt == max_attempts - 1 and vm_name == ""
       when: vm_name is not defined
+
+      rescue:
+        - name: Fail if no available name is found
+          fail:
+            msg: "No available VM name found after {{ max_attempts }} attempts."
+
+    - name: Use the available VM name for further operations
+      debug:
+        msg: "Using VM name: {{ vm_name }}"
 
     - name: Clone VM from Template
       community.general.proxmox_kvm:
