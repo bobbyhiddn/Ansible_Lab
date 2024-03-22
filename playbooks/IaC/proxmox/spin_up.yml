@@ -16,21 +16,6 @@
     max_attempts: 10
 
   tasks:
-    - name: Authenticate and obtain a ticket
-      uri:
-        url: "https://{{ proxmox_ip }}:8006/api2/json/access/ticket"
-        method: POST
-        validate_certs: no
-        body_format: form-urlencoded
-        body:
-          username: "{{ proxmox_username | default('root@pam') }}"
-          password: "{{ vault_vars.proxmox_password }}"
-      register: auth_response
-
-    - name: Set ticket and CSRFPreventionToken
-      set_fact:
-        proxmox_ticket: "{{ auth_response.json.data.ticket }}"
-        csrf_token: "{{ auth_response.json.data.CSRFPreventionToken }}"
 
     - name: VM Manual Name Handling
       block:
@@ -48,6 +33,23 @@
 
     - name: Generate VM Name
       block:
+
+        - name: Authenticate and obtain a ticket
+          uri:
+            url: "https://{{ proxmox_ip }}:8006/api2/json/access/ticket"
+            method: POST
+            validate_certs: no
+            body_format: form-urlencoded
+            body:
+              username: "{{ proxmox_username | default('root@pam') }}"
+              password: "{{ vault_vars.proxmox_password }}"
+          register: auth_response
+
+        - name: Set ticket and CSRFPreventionToken
+          set_fact:
+            proxmox_ticket: "{{ auth_response.json.data.ticket }}"
+            csrf_token: "{{ auth_response.json.data.CSRFPreventionToken }}"
+
         - name: List VMs on Proxmox node using Token
           uri:
             url: "https://{{ proxmox_ip }}:8006/api2/json/nodes/{{ node | default('proxmox') }}/qemu"
@@ -111,3 +113,4 @@
           when: clone_result.msg == "VM with name '{{ vm_name }}' already exists"
 
       when: vm_name is defined and vm_name | length > 0
+
