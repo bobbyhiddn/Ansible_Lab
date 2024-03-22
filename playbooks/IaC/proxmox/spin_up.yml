@@ -64,16 +64,17 @@
 
         - name: Find an available VM name
           set_fact:
-            vm_name: "{{ base_name + item | string }}"
+            available_name: "{{ base_name + item | string }}"
           loop: "{{ range(start_index, start_index + max_attempts) | list }}"
           when: vms | map(attribute='name') | list | select('search', '^' + base_name + item | string + '$') | list | length == 0
-          register: available_name
-          until: available_name.ansible_facts is defined
+          register: available_name_result
+          until: available_name_result.ansible_facts is defined
           retries: "{{ max_attempts }}"
 
         - name: Set the final VM name
           set_fact:
-            vm_name: "{{ available_name.ansible_facts.vm_name }}"
+            vm_name: "{{ available_name }}"
+          when: available_name is defined
 
         - name: Fail if no available name found
           fail:
