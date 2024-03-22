@@ -35,11 +35,11 @@
       block:
         - name: Check if VM name exists
           community.general.proxmox_kvm:
-            api_user: "{{ api_user }}"
-            api_password: "{{ api_password }}"
-            api_host: "{{ api_host }}"
+            api_user: "{{ api_user | default('root@pam') }}"
+            api_password: "{{ api_password | default(vault_vars.proxmox_password) }}"
+            api_host: "{{ api_host | default('proxmox') }}"
             validate_certs: no
-            node: "{{ node }}"
+            node: "{{ node | default('proxmox') }}"
             name: "{{ base_name }}{{ '%02d' | format(item) }}"
           register: vm_check
           failed_when: "'VM with name' in vm_check.msg and vm_check.failed"
