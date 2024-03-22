@@ -24,8 +24,8 @@ TICKET=$(echo $RESPONSE | jq -r '.data.ticket')
 
 # Check if we successfully obtained a ticket
 if [ -z "$TICKET" ] || [ "$TICKET" == "null" ]; then
-  echo "Failed to obtain a ticket from Proxmox API."
-  exit 1
+    echo "Failed to obtain a ticket from Proxmox API."
+    exit 1
 fi
 
 echo "Obtained ticket: $TICKET"
@@ -36,8 +36,16 @@ NODE="proxmox" # Adjust the node name as necessary
 # Use the ticket to list information for the specific VM by VM_ID
 # For a QEMU VM:
 echo "Getting info for QEMU VM ID $VM_ID on node $NODE..."
-curl -k -s -b "PVEAuthCookie=$TICKET" "https://${PROXMOX_IP}:8006/api2/json/nodes/${NODE}/qemu/${VM_ID}/status/current"
+VM_INFO=$(curl -k -s -b "PVEAuthCookie=$TICKET" "https://${PROXMOX_IP}:8006/api2/json/nodes/${NODE}/qemu/${VM_ID}/status/current")
+
+# Parse the VM information using jq
+echo "VM Status: $(echo $VM_INFO | jq -r '.data.status')"
+echo "VM CPU Usage: $(echo $VM_INFO | jq -r '.data.cpu')"
+echo "VM Memory Usage: $(echo $VM_INFO | jq -r '.data.mem')"
+# Add more fields as needed
 
 # Uncomment the following lines if you also need to fetch information for an LXC container by ID
 # echo "Getting info for LXC container ID $VM_ID on node $NODE..."
-# curl -k -s -b "PVEAuthCookie=$TICKET" "https://${PROXMOX_IP}:8006/api2/json/nodes/${NODE}/lxc/${VM_ID}/status/current"
+# CONTAINER_INFO=$(curl -k -s -b "PVEAuthCookie=$TICKET" "https://${PROXMOX_IP}:8006/api2/json/nodes/${NODE}/lxc/${VM_ID}/status/current")
+# echo "Container Status: $(echo $CONTAINER_INFO | jq -r '.data.status')"
+# Add more fields as needed
