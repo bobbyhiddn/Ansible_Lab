@@ -71,22 +71,23 @@ cleanup_logs() {
 # Main script execution starts here
 ensure_root
 
-if [ -z "$1" ]; then
-    echo "Usage: $0 <VMID>"
+if [ $# -eq 0 ]; then
+    echo "Usage: $0 <VMID> [VMID...]"
     exit 1
 fi
 
-VMID=$1
-CONFIG_FILE="/etc/pve/nodes/proxmox/qemu-server/${VMID}.conf"
-LOCK_FILE="/var/lock/qemu-server/lock-${VMID}.conf"
-LOG_FILE="/var/log/pve/tasks/active"
-BACKUP_FILE="${LOG_FILE}.backup"
+for VMID in "$@"; do
+    CONFIG_FILE="/etc/pve/nodes/proxmox/qemu-server/${VMID}.conf"
+    LOCK_FILE="/var/lock/qemu-server/lock-${VMID}.conf"
+    LOG_FILE="/var/log/pve/tasks/active"
+    BACKUP_FILE="${LOG_FILE}.backup"
 
-if vm_exists; then
-    remove_lock_file
-    stop_vm
-    remove_lock_status
-    destroy_vm
-fi
+    if vm_exists; then
+        remove_lock_file
+        stop_vm
+        remove_lock_status
+        destroy_vm
+    fi
 
-cleanup_logs
+    cleanup_logs
+done
