@@ -131,3 +131,17 @@
           virtio0: "local={{ vm_disk_size | default('10G') }},format=qcow2"
         iso: "{{ vm_iso }}"
       when: vm_iso is defined and vm_iso | length > 0
+
+    - name: Retrieve VM info from Proxmox API
+      uri:
+        url: "https://{{ proxmox_ip }}:8006/api2/json/nodes/{{ node | default('proxmox') }}/qemu/{{ vm_name }}"
+        headers:
+          Cookie: "PVEAuthCookie={{ proxmox_ticket }}"
+          CSRFPreventionToken: "{{ csrf_token }}"
+        validate_certs: no
+        return_content: yes
+        register: vm_info_response
+
+    - name: Print VM IP address
+      debug:
+        msg: "VM IP address: {{ vm_info_response.json.data.ip }}"
