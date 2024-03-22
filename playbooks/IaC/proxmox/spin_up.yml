@@ -20,7 +20,6 @@
           pause:
             prompt: "Enter the name of the VM to create or press Enter to auto-generate: "
             # Set a timeout for the prompt. For demonstration, a 15-second timeout.
-            timeout: 15
           register: manual_vm_name_input
 
         - name: Set VM name from input if provided
