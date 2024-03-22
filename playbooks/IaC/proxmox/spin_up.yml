@@ -11,6 +11,9 @@
   gather_facts: no
   vars:
     vault_vars: "{{ hostvars['VAULT_HOST'].vault_secrets.secret }}"
+    base_name: "Test-"
+    start_index: 1
+    max_attempts: 100
 
   tasks:
 
