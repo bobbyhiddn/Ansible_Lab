@@ -34,15 +34,8 @@
           when: manual_vm_name_input.user_input is defined and manual_vm_name_input.user_input | length > 0
 
         - name: Obtain Authentication Token
-          uri:
-            url: "https://{{ proxmox_ip }}/api2/json/access/ticket"
-            method: POST
-            body_format: form-urlencoded
-            body: "username={{ api_user }}&password={{ api_password }}"
-            validate_certs: no
-            return_content: yes
+          command: "curl -k -s -d 'username={{ api_user }}&password={{ api_password }}' https://{{ proxmox_ip }}/api2/json/access/ticket"
           register: login_response
-          when: vm_name is not defined or vm_name | length == 0
 
         - name: Set Authentication Token and CSRF Token as Facts
           set_fact:
