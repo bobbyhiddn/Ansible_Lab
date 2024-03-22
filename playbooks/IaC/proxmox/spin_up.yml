@@ -25,14 +25,28 @@
         api_host: "{{ proxmox_ip }}"
         validate_certs: no
         node: "{{ node | default('proxmox')}}"
-        vmid: "{{ vmid | default(omit) }}"
+        vmid: "{{ vmid | default('105') }}"
         name: "{{ vm_name }}"
-        clone: "{{ vm_template | default('rocky_linux_template') }}" # Default to 'ubuntu_template'
+        clone: "{{ vm_template | default('rocky_linux_template') }}"
         target: "{{ node | default('proxmox')}}"  
-        full_clone: yes
-        storage: "{{ vm_storage | default('local-lvm') }}" # Adjust based on your storage setup
-        format: "{{ vm_format | default('qcow2') }}"
+        full: "{{ vm_full | default('yes') }}"
+        storage: "{{ vm_storage | default('local-lvm') }}"
+        format: "{{ vm_format | default('raw') }}"
       delegate_to: localhost
+
+# - name: Clone VM with source vmid and target newid and raw format
+#   community.general.proxmox_kvm:
+#     api_user: root@pam
+#     api_password: secret
+#     api_host: helldorado
+#     clone: arbitrary_name
+#     vmid: 108
+#     newid: 152
+#     name: zavala
+#     node: sabrewulf
+#     storage: LVM_STO
+#     format: raw
+#     timeout: 300
 
     - name: Conditionally create VM from ISO if specified
       community.general.proxmox_kvm:
