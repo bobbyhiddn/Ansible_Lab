@@ -22,7 +22,7 @@
       community.general.proxmox_kvm:
         api_user: "{{ api_user | default('root@pam') }}"
         api_password: "{{ vault_vars.proxmox_password }}"
-        api_host: "{{ proxmox_host }}"
+        api_host: "{{ proxmox_ip }}"
         validate_certs: no
         node: "{{ node }}"
         vmid: "{{ vmid | default(omit) }}"
