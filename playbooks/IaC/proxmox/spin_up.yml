@@ -14,49 +14,58 @@
     base_name: "Test-"
     start_index: 1
     max_attempts: 100
-    proxmox_ip: "192.168.0.128"
-    api_user: "root@pam"
-    api_password: "{{ vault_vars.proxmox_password }}"
-    node: "proxmox" # Default node name, adjust as necessary
 
   tasks:
-    - name: Authentication and VM Name Handling
+    - name: Authenticate and obtain a ticket
+      uri:
+        url: "https://{{ proxmox_ip }}:8006/api2/json/access/ticket"
+        method: POST
+        validate_certs: no
+        body_format: form-urlencoded
+        body:
+          username: "{{ proxmox_username | default('root@pam') }}"
+          password: "{{ vault_vars.proxmox_password }}"
+      register: auth_response
+
+    - name: Set ticket and CSRFPreventionToken
+      set_fact:
+        proxmox_ticket: "{{ auth_response.json.data.ticket }}"
+        csrf_token: "{{ auth_response.json.data.CSRFPreventionToken }}"
+
+    - name: VM Manual Name Handling
       block:
         - name: Prompt for VM name or press Enter to auto-generate
           pause:
             prompt: "Enter the name of the VM to create or press Enter to auto-generate: "
           register: manual_vm_name_input
-          when: vm_name is not defined or vm_name | length == 0
 
         - name: Set VM name from input if provided
           set_fact:
             vm_name: "{{ manual_vm_name_input.user_input | default('') }}"
           when: manual_vm_name_input.user_input is defined and manual_vm_name_input.user_input | length > 0
 
-        - name: Obtain Authentication Token
-          command: "curl -k -s -d 'username={{ api_user }}&password={{ api_password }}' https://{{ proxmox_ip }}/api2/json/access/ticket"
-          register: login_response
+      when: vm_name is not defined or vm_name | length == 0
 
-        - name: Set Authentication Token and CSRF Token as Facts
+    - name: VM Name Availability Check If Not Provided
+      block:
+        - name: List VMs on Proxmox node using Token
+          uri:
+            url: "https://{{ proxmox_ip }}:8006/api2/json/nodes/{{ node | default('proxmox') }}/qemu"
+            headers:
+              Cookie: "PVEAuthCookie={{ proxmox_ticket }}"
+              CSRFPreventionToken: "{{ csrf_token }}"
+            validate_certs: no
+            return_content: yes
+          register: vm_list_response
+
+        - name: Check if VM name exists
           set_fact:
-            auth_cookie: "{{ login_response.json.data.ticket }}"
-            csrf_token: "{{ login_response.json.data.CSRFPreventionToken }}"
-          when: login_response is defined
+            vm_name_exists: "{{ vm_name in vm_list_response.content | from_json | json_query('data[*].name') }}"
 
-      - name: VM Name Availability Check
-        block:
-          - name: List VMs on Proxmox node using Token
-            command: "curl -k -s -b 'PVEAuthCookie={{ auth_cookie }}' -H 'CSRFPreventionToken: {{ csrf_token }}' https://{{ proxmox_ip }}/api2/json/nodes/{{ node }}/qemu"
-            register: vm_list_response
-
-          - name: Check if VM name exists
-            set_fact:
-              vm_name_exists: "{{ vm_name in vm_list_response.stdout | from_json | json_query('data[*].name') }}"
-
-          - name: Debug - VM name availability
-            debug:
-              msg: "VM name '{{ vm_name }}' exists: {{ vm_name_exists }}"
-            when: vm_name_exists is defined
+        - name: Debug - VM name availability
+          debug:
+            msg: "VM name '{{ vm_name }}' exists: {{ vm_name_exists }}"
+      when: vm_name_exists is defined
 
     - name: VM Creation
       block:
@@ -74,7 +83,7 @@
             vmid: "{{ vmid | default('105') }}"
             name: "{{ vm_name }}"
             clone: "{{ vm_template | default('rocky_linux_template') }}"
-            target: "{{ node | default('proxmox') }}"  
+            target: "{{ node | default('proxmox') }}"
             full: "{{ vm_full | default('yes') }}"
             storage: "{{ vm_storage | default('local-lvm') }}"
             format: "{{ vm_format | default('raw') }}"
@@ -87,4 +96,4 @@
             msg: "VM with name {{ vm_name }} already exists"
           when: vm_name_exists
 
-      when: auth_cookie is defined
+      when: proxmox_ticket is defined
