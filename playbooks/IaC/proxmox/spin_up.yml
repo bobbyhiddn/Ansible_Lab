@@ -104,11 +104,10 @@
             format: "{{ vm_format | default('raw') }}"
             timeout: "600"
           register: clone_result
-          when: not vm_name_exists
 
         - name: Fail if VM with name already exists
           fail:
             msg: "VM with name {{ vm_name }} already exists"
-          when: vm_name_exists
+          when: clone_result.msg == "VM with name '{{ vm_name }}' already exists"
 
-      when: proxmox_ticket is defined
+      when: vm_name is defined and vm_name | length > 0
