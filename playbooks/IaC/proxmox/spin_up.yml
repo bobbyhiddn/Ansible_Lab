@@ -40,6 +40,7 @@
         full: "{{ vm_full | default('yes') }}"
         storage: "{{ vm_storage | default('local-lvm') }}"
         format: "{{ vm_format | default('raw') }}"
+        timeout: "600"
       register: clone_result
 
     - name: Fail if VM with name already exists
