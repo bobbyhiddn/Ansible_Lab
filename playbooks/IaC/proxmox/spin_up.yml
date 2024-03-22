@@ -22,8 +22,8 @@
         method: POST
         body_format: form-urlencoded
         body:
-          username: "{{ api_user }}"
-          password: "{{ api_password }}"
+          username: "{{ api_user | default('root@pam') }}"
+          password: "{{ api_password | default(vault_vars.proxmox_password) }}"
         validate_certs: no
         force_basic_auth: yes
       register: login_response
