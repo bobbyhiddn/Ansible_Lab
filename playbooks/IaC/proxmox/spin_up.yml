@@ -11,13 +11,21 @@
   gather_facts: no
   vars:
     vault_vars: "{{ hostvars['VAULT_HOST'].vault_secrets.secret }}"
-  vars_prompt:
-    - name: vm_name
-      prompt: "Enter the VM name"
-      default: "test_vm"  # Default VM name
-      private: no
 
   tasks:
+
+    - name: VM Name Block
+      block:
+        - name: Prompt for VM name
+          pause:
+            prompt: "Enter the name of the VM to create: "
+          register: vm_name
+
+        - name: Set VM name as fact
+          set_fact:
+            vm_name: "{{ vm_name.user_input }}"
+      when: vm_name is not defined
+
     - name: Clone VM from Template
       community.general.proxmox_kvm:
         api_user: "{{ api_user | default('root@pam') }}"
@@ -33,26 +41,11 @@
         storage: "{{ vm_storage | default('local-lvm') }}"
         format: "{{ vm_format | default('raw') }}"
       register: clone_result
-      delegate_to: localhost
 
     - name: Fail if VM with name already exists
       fail:
         msg: "VM with name {{ vm_name }} already exists"
       when: "'VM with name' in clone_result.msg"
-
-# - name: Clone VM with source vmid and target newid and raw format
-#   community.general.proxmox_kvm:
-#     api_user: root@pam
-#     api_password: secret
-#     api_host: helldorado
-#     clone: arbitrary_name
-#     vmid: 108
-#     newid: 152
-#     name: zavala
-#     node: sabrewulf
-#     storage: LVM_STO
-#     format: raw
-#     timeout: 300
 
     - name: Conditionally create VM from ISO if specified
       community.general.proxmox_kvm:
@@ -71,4 +64,3 @@
           virtio0: "local={{ vm_disk_size | default('10G') }},format=qcow2"
         iso: "{{ vm_iso }}"
       when: vm_iso is defined and vm_iso | length > 0
-      delegate_to: localhost
