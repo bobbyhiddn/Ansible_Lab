@@ -46,8 +46,9 @@
 
       when: vm_name is not defined or vm_name | length == 0
 
-    - name: VM Name Availability Check If Not Provided
+    - name: Check if VM name already exists
       block:
+
         - name: List VMs on Proxmox node using Token
           uri:
             url: "https://{{ proxmox_ip }}:8006/api2/json/nodes/{{ node | default('proxmox') }}/qemu"
@@ -58,9 +59,14 @@
             return_content: yes
           register: vm_list_response
 
-        - name: Check if VM name exists
+        - name: Extract relevant VM data
           set_fact:
-            vm_name_exists: "{{ vm_name in vm_list_response.content | from_json | json_query('data[*].name') }}"
+            vms: "{{ vm_list_response.json | json_query('data[*].{name: name, vmid: vmid, status: status}') }}"
+
+        - name: Check if VM name already exists
+          set_fact:
+            vm_name_exists: "{{ vms | selectattr('name', 'equalto', vm_name) | list | length > 0 }}"
+          when: vm_name is defined
 
         - name: Debug - VM name availability
           debug:
