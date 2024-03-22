@@ -24,7 +24,7 @@ echo "Obtained ticket: $TICKET"
 
 # Use the ticket for subsequent API calls
 # Example: List QEMU VMs on a specific Proxmox node
-NODE="pve" # Adjust the node name as necessary
+NODE="proxmox" # Adjust the node name as necessary
 echo "Listing QEMU VMs on node $NODE..."
 curl -k -s -b "PVEAuthCookie=$TICKET" "https://${PROXMOX_IP}:8006/api2/json/nodes/${NODE}/qemu"
 
