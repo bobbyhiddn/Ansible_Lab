@@ -2,8 +2,8 @@
 
 # Check if VM ID was passed as an argument
 if [ "$#" -ne 1 ]; then
-    echo "Usage: $0 VM_ID"
-    exit 1
+	    echo "Usage: $0 VM_ID"
+	        exit 1
 fi
 
 VM_ID=$1
@@ -24,8 +24,8 @@ TICKET=$(echo $RESPONSE | jq -r '.data.ticket')
 
 # Check if we successfully obtained a ticket
 if [ -z "$TICKET" ] || [ "$TICKET" == "null" ]; then
-    echo "Failed to obtain a ticket from Proxmox API."
-    exit 1
+	    echo "Failed to obtain a ticket from Proxmox API."
+	        exit 1
 fi
 
 echo "Obtained ticket: $TICKET"
@@ -43,11 +43,15 @@ echo "VM Status: $(echo $VM_INFO | jq -r '.data.status')"
 echo "VM CPU Usage: $(echo $VM_INFO | jq -r '.data.cpu')"
 echo "VM Memory Usage: $(echo $VM_INFO | jq -r '.data.mem')"
 
-# Fetch the VM configuration to get the IP address
-VM_CONFIG=$(curl -k -s -b "PVEAuthCookie=$TICKET" "https://${PROXMOX_IP}:8006/api2/json/nodes/${NODE}/qemu/${VM_ID}/config")
+# Fetch the VM agent information
+echo "Fetching VM agent network interface information..."
+VM_AGENT_INFO=$(curl -k -s -b "PVEAuthCookie=$TICKET" "https://${PROXMOX_IP}:8006/api2/json/nodes/${NODE}/qemu/${VM_ID}/agent/network-get-interfaces")
 
-# Extract the IP address from the VM configuration
-IP_ADDRESS=$(echo $VM_CONFIG | jq -r '.data.net0' | awk -F'=' '{print $2}' | awk -F',' '{print $1}')
+# Print the raw VM agent information
+echo "Raw VM agent network interface information:"
+echo $VM_AGENT_INFO
+
+# Extract the IP address from the VM agent information
+IP_ADDRESS=$(echo $VM_AGENT_INFO | jq -r '.data.result[] | select(.name != "lo") | .ip-addresses[] | select(.ip-address-type == "ipv4") | .ip-address')
 
 echo "VM IP Address: $IP_ADDRESS"
-# Add more fields as needed
