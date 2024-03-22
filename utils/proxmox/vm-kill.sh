@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Must be run from the Proxmox host
+# Must be run as root
+
 # Function to ensure the script is run as root
 ensure_root() {
     if [[ $EUID -ne 0 ]]; then
