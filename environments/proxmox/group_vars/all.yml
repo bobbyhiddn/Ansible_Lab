@@ -1,1 +1,2 @@
-proxmox_ip: 192.168.0.128
+homelab_octets: 192.168.0
+proxmox_ip: {{ homelab_octets }}.128
