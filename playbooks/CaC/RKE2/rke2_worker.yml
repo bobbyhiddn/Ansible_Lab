@@ -1,5 +1,5 @@
 ---
-- name: Create and Configure RKE2 Master Node
+- name: Create and Configure RKE2 Worker Node
   hosts: localhost
   gather_facts: yes
   vars_prompt:
