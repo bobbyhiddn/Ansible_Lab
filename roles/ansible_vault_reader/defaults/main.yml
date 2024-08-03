@@ -1,0 +1,3 @@
+---
+hashicorp_mount_point: devops
+hashicorp_secret_path: secrets/credentials/
