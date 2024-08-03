@@ -1,0 +1,200 @@
+---
+- name: Create and Configure RKE2 Master Node
+  hosts: localhost
+  gather_facts: yes
+  vars_prompt:
+    - name: template_id
+      prompt: Enter template ID
+      default: "9000"
+      private: no
+    - name: template_name
+      prompt: Enter template name
+      default: "rocky-9-master-template"
+      private: no
+    - name: vm_id
+      prompt: Enter VM ID
+      default: "100"
+      private: no
+    - name: vm_name
+      prompt: Enter VM name
+      default: "rke2-master-1"
+      private: no
+    - name: storage
+      prompt: Enter storage name
+      default: "local-lvm"
+      private: no
+    - name: memory
+      prompt: Enter memory in MB
+      default: "4096"
+      private: no
+    - name: cores
+      prompt: Enter number of cores
+      default: "2"
+      private: no
+    - name: disk
+      prompt: Enter disk size in GB
+      default: "20"
+      private: no
+    - name: iso_path
+      prompt: Enter ISO path
+      default: "/mnt/TheTome/ISOs/Rocky-9.3-x86_64-boot.iso"
+      private: no
+
+  vars:
+    proxmox_api_user: "{{ vault_proxmox_api_user }}"
+    proxmox_api_password: "{{ vault_proxmox_api_password }}"
+    vm_user: "{{ vault_vm_user }}"
+    ssh_private_key_file: "{{ vault_ssh_private_key_file }}"
+
+  tasks:
+    - name: Upload Rocky Linux 9.3 ISO to Proxmox
+      community.general.proxmox_disk:
+        api_host: "{{ proxmox_api_host }}"
+        api_user: "{{ proxmox_api_user }}"
+        api_password: "{{ proxmox_api_password }}"
+        node: "{{ proxmox_node }}"
+        storage: "local"
+        filename: "Rocky-9.3-x86_64-boot.iso"
+        src: "{{ iso_path }}"
+        content: "iso"
+
+    - name: Create Rocky Linux 9.3 VM
+      community.general.proxmox_kvm:
+        api_host: "{{ proxmox_api_host }}"
+        api_user: "{{ proxmox_api_user }}"
+        api_password: "{{ proxmox_api_password }}"
+        node: "{{ proxmox_node }}"
+        vmid: "{{ template_id }}"
+        name: "{{ template_name }}"
+        cores: "{{ cores }}"
+        memory: "{{ memory }}"
+        disk: "scsi0:{{ storage }}:{{ disk }}"
+        net: '{"net0":"virtio,bridge=vmbr0"}'
+        ostype: l26
+        ide2: "local:iso/Rocky-9.3-x86_64-boot.iso,media=cdrom"
+        onboot: yes
+        state: present
+
+    - name: Start the VM
+      community.general.proxmox_kvm:
+        api_host: "{{ proxmox_api_host }}"
+        api_user: "{{ proxmox_api_user }}"
+        api_password: "{{ proxmox_api_password }}"
+        node: "{{ proxmox_node }}"
+        vmid: "{{ template_id }}"
+        state: started
+
+    # Here you would typically add tasks to configure the OS, but this requires
+    # interacting with the VM console, which is challenging to automate.
+    # You might consider using Packer or a kickstart file for this step.
+
+    - name: Stop the VM
+      community.general.proxmox_kvm:
+        api_host: "{{ proxmox_api_host }}"
+        api_user: "{{ proxmox_api_user }}"
+        api_password: "{{ proxmox_api_password }}"
+        node: "{{ proxmox_node }}"
+        vmid: "{{ template_id }}"
+        state: stopped
+
+    - name: Convert VM to template
+      community.general.proxmox_kvm:
+        api_host: "{{ proxmox_api_host }}"
+        api_user: "{{ proxmox_api_user }}"
+        api_password: "{{ proxmox_api_password }}"
+        node: "{{ proxmox_node }}"
+        vmid: "{{ template_id }}"
+        state: current
+        template: yes
+
+    - name: Create RKE2 master node from template
+      community.general.proxmox_kvm:
+        api_host: "{{ proxmox_api_host }}"
+        api_user: "{{ proxmox_api_user }}"
+        api_password: "{{ proxmox_api_password }}"
+        node: "{{ proxmox_node }}"
+        vmid: "{{ vm_id }}"
+        name: "{{ vm_name }}"
+        cores: "{{ cores }}"
+        memory: "{{ memory }}"
+        clone: "{{ template_id }}"
+        description: "RKE2 Master Node"
+        state: started
+
+    - name: Wait for VM to be ready
+      wait_for:
+        timeout: 300
+
+    - name: Get VM IP address
+      community.general.proxmox_kvm:
+        api_host: "{{ proxmox_api_host }}"
+        api_user: "{{ proxmox_api_user }}"
+        api_password: "{{ proxmox_api_password }}"
+        node: "{{ proxmox_node }}"
+        vmid: "{{ vm_id }}"
+        state: current
+      register: vm_info
+
+    - name: Add VM to inventory
+      add_host:
+        name: "{{ vm_info.proxmox_api_host }}"
+        groups: rke2_master
+        ansible_host: "{{ vm_info.proxmox_api_host }}"
+        ansible_user: "{{ vm_user }}"
+        ansible_ssh_private_key_file: "{{ ssh_private_key_file }}"
+
+- name: Configure RKE2 Master Node
+  hosts: rke2_master
+  gather_facts: yes
+  become: yes
+
+  tasks:
+    - name: Install RKE2 server
+      ansible.builtin.shell: |
+        curl -sfL https://get.rke2.io | sh -
+      args:
+        creates: /usr/local/bin/rke2
+
+    - name: Enable rke2-server service
+      ansible.builtin.systemd:
+        name: rke2-server
+        enabled: yes
+
+    - name: Start rke2-server service
+      ansible.builtin.systemd:
+        name: rke2-server
+        state: started
+
+    - name: Wait for rke2-server to be ready
+      ansible.builtin.wait_for:
+        path: /var/lib/rancher/rke2/server/node-token
+        state: present
+        timeout: 300
+
+    - name: Get node token
+      ansible.builtin.slurp:
+        src: /var/lib/rancher/rke2/server/node-token
+      register: node_token
+
+    - name: Display node token
+      ansible.builtin.debug:
+        var: node_token.content | b64decode
+
+    - name: Get server IP
+      ansible.builtin.shell: ip -4 addr show eth0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}'
+      register: server_ip
+
+    - name: Display server IP
+      ansible.builtin.debug:
+        var: server_ip.stdout
+
+    - name: Configure kubectl
+      ansible.builtin.shell: |
+        mkdir -p $HOME/.kube
+        cp /etc/rancher/rke2/rke2.yaml $HOME/.kube/config
+        chown $(id -u):$(id -g) $HOME/.kube/config
+        chmod 600 $HOME/.kube/config
+        echo 'export KUBECONFIG=$HOME/.kube/config' >> $HOME/.bashrc
+        echo 'export PATH=$PATH:/var/lib/rancher/rke2/bin' >> $HOME/.bashrc
+      args:
+        creates: $HOME/.kube/config
