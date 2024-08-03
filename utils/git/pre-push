@@ -1,0 +1,19 @@
+#!/bin/sh
+# The purpose of this script is to prevent pushing to a protected branch from a remote other than the allowed one.
+# This script should be placed in the .git/hooks directory of the repository and should be named 'pre-push'.
+# The script should be made executable by running 'chmod +x .git/hooks/pre-push'.
+
+protected_branch='private'
+allowed_remote='gitlab'
+current_branch=$(git rev-parse --abbrev-ref HEAD)
+push_remote=$1
+
+echo "Current branch: $current_branch"
+echo "Push remote: $push_remote"
+
+if [ "$current_branch" = "$protected_branch" ] && [ "$push_remote" != "$allowed_remote" ]; then
+    echo "Error: The '$protected_branch' branch can only be pushed to '$allowed_remote'."
+    exit 1
+fi
+
+exit 0
